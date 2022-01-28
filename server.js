@@ -13,8 +13,8 @@ const web3 = new Web3(
 
 const adminWalletAddr = process.env.ADMIN_ADDRESS;
 const adminPrivKey = process.env.PRIV_KEY;
-const abi = require("./minimal_forwarder.json");
-const forwarderAddr = process.env.FORWARDER_ADDRESS;
+const abi = require("./oaswap_faucet.json");
+const faucetAddr = process.env.FAUCET_ADDRESS;
 
 const app = express();
 // app.use(express.json());
@@ -40,7 +40,7 @@ const executeContractTransaction = async (
   _key,
   _gasLimit,
   _gasPrice,
-  _gas,
+  // _gas,
   contractTransactionExecutedCallback
 ) => {
   web3.eth.getTransactionCount(_wallet).then((txCount) => {
@@ -50,7 +50,7 @@ const executeContractTransaction = async (
       nonce: web3.utils.toHex(txCount),
       gasLimit: web3.utils.toHex(_gasLimit),
       gasPrice: web3.utils.toHex(_gasPrice),
-      gas: web3.utils.toHex(_gas),
+      // gas: web3.utils.toHex(_gas),
       data: _encodedABI,
     };
     const tx = new webtx(txOptions);
@@ -108,41 +108,40 @@ app.post("/ethers", function (req, res) {
 
 // request ROSE
 app.post("/requestrose", async function (req, res) {
-  console.log(req.body);
+  const requestWallet = req.body.address;
 
   try {
-    const contract = new web3.eth.Contract(abi, forwarderAddr);
-    const query = contract.methods.send(receiver, request);
+    const forwarderContract = new web3.eth.Contract(abi, faucetAddr);
+    const query = forwarderContract.methods.faucetWithdraw(requestWallet);
     const encodedABI = query.encodeABI();
 
-    let myeth_old, myeth_new;
+    let requestWalletOld, requestWalletNew;
 
-    await web3.eth.getBalance(receiver).then((balance) => {
-      myeth_old = web3.utils.fromWei(balance, "ether");
+    await web3.eth.getBalance(requestWallet).then((balance) => {
+      requestWalletOld = web3.utils.fromWei(balance, "ether");
     });
 
     const contractTransactionExecuted = async (receipt) => {
-      await web3.eth.getBalance(receiver).then((balance) => {
-        myeth_new = web3.utils.fromWei(balance, "ether");
+      await web3.eth.getBalance(requestWallet).then((balance) => {
+        requestWalletNew = web3.utils.fromWei(balance, "ether");
       });
 
-      const obj = { ethsent: myeth_new - myeth_old };
+      const obj = { rose_sent: requestWalletNew - requestWalletOld };
       res.setHeader("Content-Type", "application/json");
       res.status(200).send(JSON.stringify(obj));
     };
 
     executeContractTransaction(
-      forwarderAddr,
+      faucetAddr,
       adminWalletAddr,
       encodedABI,
       adminPrivKey,
-      9000000,
-      20000000000,
-      5000000,
+      21000000000000,
+      10000000000,
       contractTransactionExecuted
     );
   } catch (err) {
-    const obj = { ethsent: -1 };
+    const obj = { rose_sent: -1 };
     res.setHeader("Content-Type", "application/json");
     res.status(200).send(JSON.stringify(obj));
   }
