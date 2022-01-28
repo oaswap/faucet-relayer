@@ -1,9 +1,11 @@
+require('dotenv').config();
+
 const express = require("express"),
   parser = require("body-parser"),
   http = require("http");
 
 const Web3 = require("web3"),
-  webtx = require("ethereumjs-tx");
+  webtx = require("ethereumjs-tx").Transaction;
 
 const web3 = new Web3(
   new Web3.providers.HttpProvider(
@@ -53,16 +55,16 @@ const executeContractTransaction = async (
       // gas: web3.utils.toHex(_gas),
       data: _encodedABI,
     };
-    const tx = new webtx(txOptions);
-    const privateKey = new Buffer(_key, "hex");
+    const tx = new webtx(txOptions, {'chain': 4});
+    const privateKey = new Buffer.from(_key, "hex");
     tx.sign(privateKey);
     const serializedTx = tx.serialize();
 
     web3.eth
       .sendSignedTransaction("0x" + serializedTx.toString("hex"))
-      .on("confirmation", (confirmationNumber, receipt) => {
-        console.log("=> confirmation: " + confirmationNumber);
-      })
+      // .on("confirmation", (confirmationNumber, receipt) => {
+      //   console.log("=> confirmation: " + confirmationNumber);
+      // })
       .on("transactionHash", (hash) => {
         console.log("=> hash");
         console.log(hash);
@@ -70,8 +72,8 @@ const executeContractTransaction = async (
       .on("error", console.error)
       .then((receipt) => {
         //console.log('=> reciept');
-        //console.log(receipt);
-        contractTransactionExecutedCallback(receipt);
+        console.log(receipt);
+        // contractTransactionExecutedCallback(receipt);
       });
   });
 };
@@ -108,7 +110,7 @@ app.post("/ethers", function (req, res) {
 
 // request ROSE
 app.post("/requestrose", async function (req, res) {
-  const requestWallet = req.body.address;
+  const requestWallet = web3.utils.toChecksumAddress(req.body.address);
 
   try {
     const forwarderContract = new web3.eth.Contract(abi, faucetAddr);
@@ -136,8 +138,9 @@ app.post("/requestrose", async function (req, res) {
       adminWalletAddr,
       encodedABI,
       adminPrivKey,
-      21000000000000,
-      10000000000,
+      // web3.utils.toWei('21000', 'gwei'),
+      83437,
+      web3.utils.toWei('2', 'gwei'),
       contractTransactionExecuted
     );
   } catch (err) {
