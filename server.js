@@ -1,4 +1,4 @@
-require('dotenv').config();
+require("dotenv").config();
 
 const express = require("express"),
   parser = require("body-parser"),
@@ -55,10 +55,11 @@ const executeContractTransaction = async (
       // gas: web3.utils.toHex(_gas),
       data: _encodedABI,
     };
-    const tx = new webtx(txOptions, {'chain': 4});
+    const tx = new webtx(txOptions, { chain: 4 });
     const privateKey = new Buffer.from(_key, "hex");
     tx.sign(privateKey);
     const serializedTx = tx.serialize();
+    let txHash;
 
     web3.eth
       .sendSignedTransaction("0x" + serializedTx.toString("hex"))
@@ -68,12 +69,13 @@ const executeContractTransaction = async (
       .on("transactionHash", (hash) => {
         console.log("=> hash");
         console.log(hash);
+        txHash = hash;
       })
       .on("error", console.error)
       .then((receipt) => {
         //console.log('=> reciept');
-        console.log(receipt);
-        // contractTransactionExecutedCallback(receipt);
+        // console.log(receipt);
+        contractTransactionExecutedCallback(receipt, hash);
       });
   });
 };
@@ -123,12 +125,15 @@ app.post("/requestrose", async function (req, res) {
       requestWalletOld = web3.utils.fromWei(balance, "ether");
     });
 
-    const contractTransactionExecuted = async (receipt) => {
+    const contractTransactionExecuted = async (receipt, hash) => {
       await web3.eth.getBalance(requestWallet).then((balance) => {
         requestWalletNew = web3.utils.fromWei(balance, "ether");
       });
 
-      const obj = { rose_sent: requestWalletNew - requestWalletOld };
+      const obj = {
+        rose_sent: requestWalletNew - requestWalletOld,
+        hash: hash,
+      };
       res.setHeader("Content-Type", "application/json");
       res.status(200).send(JSON.stringify(obj));
     };
@@ -140,7 +145,7 @@ app.post("/requestrose", async function (req, res) {
       adminPrivKey,
       // web3.utils.toWei('21000', 'gwei'),
       83437,
-      web3.utils.toWei('2', 'gwei'),
+      web3.utils.toWei("2", "gwei"),
       contractTransactionExecuted
     );
   } catch (err) {
