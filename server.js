@@ -59,7 +59,7 @@ const executeContractTransaction = async (
     const privateKey = new Buffer.from(_key, "hex");
     tx.sign(privateKey);
     const serializedTx = tx.serialize();
-    let txHash;
+    let txHash = "";
 
     web3.eth
       .sendSignedTransaction("0x" + serializedTx.toString("hex"))
@@ -75,7 +75,7 @@ const executeContractTransaction = async (
       .then((receipt) => {
         //console.log('=> reciept');
         // console.log(receipt);
-        contractTransactionExecutedCallback(receipt, hash);
+        contractTransactionExecutedCallback(receipt, txHash);
       });
   });
 };
