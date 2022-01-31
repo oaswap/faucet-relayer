@@ -194,8 +194,9 @@ app.post("/verifyrecaptcha", async function (req, res) {
       .then((response) => response.json())
       .then((response) => {
         // const jsonRes = JSON.parse(response);
-        console.log("response", response);
-        return jsonRes;
+        // console.log("response", response);
+        res.setHeader("Content-Type", "application/json");
+        res.status(200).send(response);
       })
       .catch((error) => console.log(error));
   } catch (error) {
