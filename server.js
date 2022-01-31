@@ -1,4 +1,5 @@
 require("dotenv").config();
+const fetch = require("node-fetch");
 
 const express = require("express"),
   parser = require("body-parser"),
@@ -110,8 +111,19 @@ app.post("/ethers", function (req, res) {
   }
 });
 
-// request ROSE
+// Request ROSE
 app.post("/requestrose", async function (req, res) {
+  if (typeof req.body.address == "undefined") {
+    res.setHeader("Content-Type", "application/json");
+    res.status(400).send(
+      JSON.stringify({
+        result: "Error",
+        msg: "Error in address field",
+      })
+    );
+    return;
+  }
+
   const requestWallet = web3.utils.toChecksumAddress(req.body.address);
 
   try {
@@ -153,64 +165,47 @@ app.post("/requestrose", async function (req, res) {
     res.setHeader("Content-Type", "application/json");
     res.status(200).send(JSON.stringify(obj));
   }
+});
 
-  // if (
-  //   typeof req.body.receiver == "undefined" ||
-  //   typeof req.body.request == "undefined"
-  // ) {
-  //   res.setHeader("Content-Type", "application/json");
-  //   res
-  //     .status(400)
-  //     .send(
-  //       JSON.stringify({
-  //         result: "error",
-  //         msg: "error in receiver and/or request fields"
-  //       })
-  //     );
-  //   return;
-  // }
+// Verify ReCAPTCHA token
+app.post("/verifyrecaptcha", async function (req, res) {
+  if (typeof req.body.token == "undefined") {
+    res.setHeader("Content-Type", "application/json");
+    res.status(400).send(
+      JSON.stringify({
+        result: "Error",
+        msg: "Error in token field",
+      })
+    );
+    return;
+  }
 
-  // let receiver = req.body.receiver;
-  // let request = req.body.request;
+  const responseKey = req.body.token;
+  const secretKey = process.env.RECAPTCHA_SECRET;
+  const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${responseKey}`;
 
-  // console.log(receiver);
-  // console.log(request);
-
-  // try {
-  //   const contract = new web3.eth.Contract(abi, forwarderAddr);
-
-  //   const query = contract.methods.send(receiver, request);
-  //   const encodedABI = query.encodeABI();
-
-  //   let myeth_old, myeth_new;
-
-  //   await web3.eth.getBalance(receiver).then(balance => {
-  //     myeth_old = web3.utils.fromWei(balance, "ether");
-  //   });
-
-  //   const contractTransactionExecuted = async receipt => {
-  //     await web3.eth.getBalance(receiver).then(balance => {
-  //       myeth_new = web3.utils.fromWei(balance, "ether");
-  //     });
-
-  //     const obj = { ethsent: myeth_new - myeth_old };
-  //     res.setHeader("Content-Type", "application/json");
-  //     res.status(200).send(JSON.stringify(obj));
-  //   };
-
-  //   executeContractTransaction(
-  //     forwarderAddr,
-  //     adminWalletAddr,
-  //     encodedABI,
-  //     adminPrivKey,
-  //     9000000,
-  //     20000000000,
-  //     5000000,
-  //     contractTransactionExecuted
-  //   );
-  // } catch (err) {
-  //   const obj = { ethsent: -1 };
-  //   res.setHeader("Content-Type", "application/json");
-  //   res.status(200).send(JSON.stringify(obj));
-  // }
+  try {
+    await fetch(verifyUrl, {
+      method: "POST",
+      // mode: "cors",
+      // body: JSON.stringify(tokenRequest),
+      // headers: { "Content-Type": "application/text" },
+    })
+      .then((response) => response.json())
+      .then((response) => {
+        // const jsonRes = JSON.parse(response);
+        console.log("response", response);
+        return jsonRes;
+      })
+      .catch((error) => console.log(error));
+  } catch (error) {
+    console.log(error);
+    res.setHeader("Content-Type", "application/json");
+    res.status(400).send(
+      JSON.stringify({
+        result: "Error",
+        msg: "Token verification failed",
+      })
+    );
+  }
 });
