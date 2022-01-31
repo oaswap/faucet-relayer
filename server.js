@@ -7,10 +7,12 @@ const express = require("express"),
 
 const Web3 = require("web3"),
   webtx = require("ethereumjs-tx").Transaction;
+  Common = require('ethereumjs-common').default;
 
 const web3 = new Web3(
   new Web3.providers.HttpProvider(
-    `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`
+    // `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`
+    "https://emerald.oasis.dev"
   )
 );
 
@@ -24,7 +26,7 @@ const app = express();
 app.use(parser.json());
 app.use(parser.urlencoded({ extended: true }));
 app.use(function (req, res, next) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", "https://oaswap.finance");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
@@ -56,7 +58,17 @@ const executeContractTransaction = async (
       // gas: web3.utils.toHex(_gas),
       data: _encodedABI,
     };
-    const tx = new webtx(txOptions, { chain: 4 });
+    const customCommon = Common.forCustomChain(
+      "mainnet",
+      {
+        name: "Oasis Emerald",
+        networkId: 42262,
+        chainId: 42262,
+      },
+      "istanbul"
+    );
+    // const tx = new webtx(txOptions, { chain: process.env.CHAIN_ID });
+    const tx = new webtx(txOptions, { common: customCommon });
     const privateKey = new Buffer.from(_key, "hex");
     tx.sign(privateKey);
     const serializedTx = tx.serialize();
@@ -156,8 +168,8 @@ app.post("/requestrose", async function (req, res) {
       encodedABI,
       adminPrivKey,
       // web3.utils.toWei('21000', 'gwei'),
-      83437,
-      web3.utils.toWei("2", "gwei"),
+      212893,
+      web3.utils.toWei("10", "gwei"),
       contractTransactionExecuted
     );
   } catch (err) {
