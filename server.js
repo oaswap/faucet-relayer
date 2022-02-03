@@ -11,8 +11,8 @@ const Web3 = require("web3"),
 
 const web3 = new Web3(
   new Web3.providers.HttpProvider(
-    // `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`
-    "https://emerald.oasis.dev"
+    `https://rinkeby.infura.io/v3/${process.env.INFURA_ID}`
+    // "https://emerald.oasis.dev"
   )
 );
 
@@ -27,6 +27,7 @@ app.use(parser.json());
 app.use(parser.urlencoded({ extended: true }));
 app.use(function (req, res, next) {
   res.setHeader("Access-Control-Allow-Origin", "https://oaswap.finance");
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
@@ -125,7 +126,7 @@ app.post("/ethers", function (req, res) {
 
 // Request ROSE
 app.post("/requestrose", async function (req, res) {
-  if (typeof req.body.address == "undefined") {
+  if (typeof req.body.address == "undefined" || typeof req.body.recaptcha == "undefined") {
     res.setHeader("Content-Type", "application/json");
     res.status(400).send(
       JSON.stringify({
@@ -137,6 +138,8 @@ app.post("/requestrose", async function (req, res) {
   }
 
   const requestWallet = web3.utils.toChecksumAddress(req.body.address);
+  const recaptchaToken = req.body.recaptcha;
+  console.log(recaptchaToken);
 
   try {
     const forwarderContract = new web3.eth.Contract(abi, faucetAddr);
