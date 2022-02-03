@@ -6,8 +6,8 @@ const express = require("express"),
   http = require("http");
 
 const Web3 = require("web3"),
-  webtx = require("ethereumjs-tx").Transaction;
-  Common = require('ethereumjs-common').default;
+  webtx = require("ethereumjs-tx").Transaction,
+  Common = require("ethereumjs-common").default;
 
 const web3 = new Web3(
   new Web3.providers.HttpProvider(
@@ -126,7 +126,10 @@ app.post("/ethers", function (req, res) {
 
 // Request ROSE
 app.post("/requestrose", async function (req, res) {
-  if (typeof req.body.address == "undefined" || typeof req.body.recaptcha == "undefined") {
+  if (
+    typeof req.body.address == "undefined" ||
+    typeof req.body.recaptcha == "undefined"
+  ) {
     res.setHeader("Content-Type", "application/json");
     res.status(400).send(
       JSON.stringify({
@@ -141,45 +144,48 @@ app.post("/requestrose", async function (req, res) {
   const recaptchaToken = req.body.recaptcha;
   console.log(recaptchaToken);
 
-  try {
-    const forwarderContract = new web3.eth.Contract(abi, faucetAddr);
-    const query = forwarderContract.methods.faucetWithdraw(requestWallet);
-    const encodedABI = query.encodeABI();
+  const recaptchaVerification = await checkRecaptcha(recaptchaToken);
+  console.log("recaptchaVerification", recaptchaVerification);
 
-    let requestWalletOld, requestWalletNew;
+  // try {
+  //   const forwarderContract = new web3.eth.Contract(abi, faucetAddr);
+  //   const query = forwarderContract.methods.faucetWithdraw(requestWallet);
+  //   const encodedABI = query.encodeABI();
 
-    await web3.eth.getBalance(requestWallet).then((balance) => {
-      requestWalletOld = web3.utils.fromWei(balance, "ether");
-    });
+  //   let requestWalletOld, requestWalletNew;
 
-    const contractTransactionExecuted = async (receipt, hash) => {
-      await web3.eth.getBalance(requestWallet).then((balance) => {
-        requestWalletNew = web3.utils.fromWei(balance, "ether");
-      });
+  //   await web3.eth.getBalance(requestWallet).then((balance) => {
+  //     requestWalletOld = web3.utils.fromWei(balance, "ether");
+  //   });
 
-      const obj = {
-        rose_sent: requestWalletNew - requestWalletOld,
-        hash: hash,
-      };
-      res.setHeader("Content-Type", "application/json");
-      res.status(200).send(JSON.stringify(obj));
-    };
+  //   const contractTransactionExecuted = async (receipt, hash) => {
+  //     await web3.eth.getBalance(requestWallet).then((balance) => {
+  //       requestWalletNew = web3.utils.fromWei(balance, "ether");
+  //     });
 
-    executeContractTransaction(
-      faucetAddr,
-      adminWalletAddr,
-      encodedABI,
-      adminPrivKey,
-      // web3.utils.toWei('21000', 'gwei'),
-      212893,
-      web3.utils.toWei("10", "gwei"),
-      contractTransactionExecuted
-    );
-  } catch (err) {
-    const obj = { rose_sent: -1 };
-    res.setHeader("Content-Type", "application/json");
-    res.status(200).send(JSON.stringify(obj));
-  }
+  //     const obj = {
+  //       rose_sent: requestWalletNew - requestWalletOld,
+  //       hash: hash,
+  //     };
+  //     res.setHeader("Content-Type", "application/json");
+  //     res.status(200).send(JSON.stringify(obj));
+  //   };
+
+  //   executeContractTransaction(
+  //     faucetAddr,
+  //     adminWalletAddr,
+  //     encodedABI,
+  //     adminPrivKey,
+  //     // web3.utils.toWei('21000', 'gwei'),
+  //     212893,
+  //     web3.utils.toWei("10", "gwei"),
+  //     contractTransactionExecuted
+  //   );
+  // } catch (err) {
+  //   const obj = { rose_sent: -1 };
+  //   res.setHeader("Content-Type", "application/json");
+  //   res.status(200).send(JSON.stringify(obj));
+  // }
 });
 
 // Verify ReCAPTCHA token
@@ -225,3 +231,29 @@ app.post("/verifyrecaptcha", async function (req, res) {
     );
   }
 });
+
+async function checkRecaptcha(responseKey) {
+  const secretKey = process.env.RECAPTCHA_SECRET;
+  const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${responseKey}`;
+
+  try {
+    await fetch(verifyUrl, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((response) => {
+        // const jsonRes = JSON.parse(response);
+        console.log("response", response);
+      })
+      .catch((error) => console.log(error));
+  } catch (error) {
+    console.log(error);
+    res.setHeader("Content-Type", "application/json");
+    res.status(400).send(
+      JSON.stringify({
+        result: "Error",
+        msg: "Token verification failed",
+      })
+    );
+  }
+}
